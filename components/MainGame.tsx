@@ -1,17 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Wind, Sparkles } from 'lucide-react';
 import { analyzeGas } from '../services/geminiService';
+import { playFartSound } from '../services/audioService';
 import { AnalysisResult } from '../types';
 import { Button } from './Button';
 
 interface MainGameProps {
   gas: number;
   gasPerClick: number;
+  gasPerSecond: number;
+  isMuted: boolean;
   onFart: () => void;
   onAnalysisComplete: (result: AnalysisResult) => void;
 }
 
-export const MainGame: React.FC<MainGameProps> = ({ gas, gasPerClick, onFart, onAnalysisComplete }) => {
+export const MainGame: React.FC<MainGameProps> = ({ gas, gasPerClick, gasPerSecond, isMuted, onFart, onAnalysisComplete }) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [particles, setParticles] = useState<{id: number, x: number, y: number, text: string}[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -25,11 +29,17 @@ export const MainGame: React.FC<MainGameProps> = ({ gas, gasPerClick, onFart, on
 
   const handleFartClick = (e: React.MouseEvent) => {
     onFart();
+    
+    // Play sound if not muted
+    if (!isMuted) {
+      playFartSound();
+    }
+
     setIsAnimating(true);
     setTimeout(() => setIsAnimating(false), 150);
 
     // Add particle effect
-    const texts = ["뿡!", "뿌웅~", "피식", "쾅!", "뽀옹"];
+    const texts = ["뿡!", "뿌웅~", "피식", "쾅!", "뽀옹", "푸드득"];
     const randomText = texts[Math.floor(Math.random() * texts.length)];
     const id = Date.now();
     const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -85,16 +95,19 @@ export const MainGame: React.FC<MainGameProps> = ({ gas, gasPerClick, onFart, on
             transition-transform duration-100
             ${isAnimating ? 'scale-90 bg-yellow-200' : 'hover:scale-105 animate-float'}
             relative overflow-visible
+            active:outline-none focus:outline-none select-none
+            touch-manipulation
           `}
+          style={{ WebkitTapHighlightColor: 'transparent' }}
         >
-          <span className="text-8xl filter drop-shadow-lg">🍑</span>
-          <span className="mt-4 text-xl font-bold text-yellow-800">클릭해서 방구끼기</span>
+          <span className="text-8xl filter drop-shadow-lg select-none">🍑</span>
+          <span className="mt-4 text-xl font-bold text-yellow-800 select-none">클릭해서 방구끼기</span>
           
           {/* Particles */}
           {particles.map(p => (
             <div 
               key={p.id}
-              className="absolute pointer-events-none text-2xl font-bold text-green-600 animate-bounce"
+              className="absolute pointer-events-none text-2xl font-bold text-green-600 animate-bounce whitespace-nowrap"
               style={{ 
                 left: p.x, 
                 top: p.y, 
@@ -108,7 +121,7 @@ export const MainGame: React.FC<MainGameProps> = ({ gas, gasPerClick, onFart, on
         
         {/* Gas Cloud Effect when clicked */}
         {isAnimating && (
-          <div className="absolute -right-10 top-1/2 transform -translate-y-1/2">
+          <div className="absolute -right-10 top-1/2 transform -translate-y-1/2 pointer-events-none">
              <Wind className="w-20 h-20 text-green-500 opacity-60 animate-pulse" />
           </div>
         )}
@@ -122,8 +135,7 @@ export const MainGame: React.FC<MainGameProps> = ({ gas, gasPerClick, onFart, on
         </div>
         <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-500 text-xs">자동 생산</p>
-          <p className="text-xl font-bold text-gray-800">0/sec</p> 
-          {/* Note: Auto production logic handled in App parent, passed down visually via context if needed, but for now simplistic */}
+          <p className="text-xl font-bold text-gray-800">+{gasPerSecond || 0}/sec</p> 
         </div>
       </div>
 

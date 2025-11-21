@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingCart, Gamepad2, ScrollText, Wind, Share2 } from 'lucide-react';
+import { ShoppingCart, Gamepad2, ScrollText, Wind, Share2, Volume2, VolumeX } from 'lucide-react';
 import { MainGame } from './components/MainGame';
 import { Shop } from './components/Shop';
 import { AnalysisLog } from './components/AnalysisLog';
@@ -19,6 +20,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.GAME);
   const [analysisLogs, setAnalysisLogs] = useState<AnalysisResult[]>([]);
   const [showShareToast, setShowShareToast] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   // Passive Income Loop
@@ -125,6 +127,13 @@ function App() {
               Lv. {Math.floor(Math.sqrt(gameState.totalGasGenerated / 100)) + 1}
             </div>
             <button 
+              onClick={() => setIsMuted(!isMuted)}
+              className="p-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 transition-colors"
+              aria-label={isMuted ? "소리 켜기" : "소리 끄기"}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+            <button 
               onClick={handleShare}
               className="p-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 transition-colors"
               aria-label="공유하기"
@@ -153,7 +162,9 @@ function App() {
         {activeTab === Tab.GAME && (
           <MainGame 
             gas={gameState.gas} 
-            gasPerClick={gameState.gasPerClick} 
+            gasPerClick={gameState.gasPerClick}
+            gasPerSecond={gameState.gasPerSecond}
+            isMuted={isMuted}
             onFart={handleFart} 
             onAnalysisComplete={handleAnalysisComplete}
           />
@@ -169,7 +180,7 @@ function App() {
       {/* Footer Info (Only on Game Tab) */}
       {activeTab === Tab.GAME && (
          <div className="text-center pb-2 text-[10px] text-gray-400">
-           v1.0.0 • Powered by Google Gemini
+           v1.1.0 • Powered by Google Gemini
          </div>
       )}
 
