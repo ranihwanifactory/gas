@@ -5,7 +5,7 @@ const apiKey = process.env.API_KEY || '';
 // Helper to check if API key is present (for UI feedback only, logic handles it gracefully)
 export const hasApiKey = (): boolean => !!apiKey;
 
-export const analyzeGas = async (gasLevel: number, clickPower: number): Promise<{ flavor: string; rarity: string; score: number }> => {
+export const analyzeGas = async (gasLevel: number, clickPower: number): Promise<{ flavor: string; rarity: 'Common' | 'Rare' | 'Epic' | 'Legendary'; score: number }> => {
   if (!apiKey) {
     return {
       flavor: "API 키가 없어 냄새를 맡을 수 없습니다. (데모 모드)",
