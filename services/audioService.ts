@@ -1,67 +1,55 @@
 
-export const playFartSound = () => {
-  const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-  if (!AudioContext) return;
+let audioContext: AudioContext | null = null;
+let fartBuffer: AudioBuffer | null = null;
+let isLoading = false;
 
-  // 싱글톤 패턴처럼 사용하거나 매번 생성 (브라우저 정책에 따라 다름, 여기서는 가볍게 매번 생성하되 닫힘 처리하거나 전역 변수로 관리)
-  // 간단한 구현을 위해 전역 변수로 관리
-  if (!(window as any).fartAudioCtx) {
-    (window as any).fartAudioCtx = new AudioContext();
+export const playFartSound = async () => {
+  try {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+
+    // 브라우저 정책상 사용자 제스처 후 resume 필요
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+
+    // 버퍼가 없으면 로드 시도 (최초 1회)
+    if (!fartBuffer) {
+      if (isLoading) return; // 중복 로드 방지
+      isLoading = true;
+      
+      try {
+        const response = await fetch('./gas.mp3');
+        if (!response.ok) {
+             throw new Error(`gas.mp3 파일을 찾을 수 없습니다. (Status: ${response.status})`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        fartBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      } catch (e) {
+        console.error("방구 소리 로드 실패:", e);
+      } finally {
+        isLoading = false;
+      }
+    }
+
+    // 버퍼가 준비되었으면 재생
+    if (fartBuffer) {
+      const source = audioContext.createBufferSource();
+      source.buffer = fartBuffer;
+      
+      // 재미를 위해 매번 피치(재생 속도)를 약간씩 다르게 설정 (0.85배 ~ 1.15배)
+      source.playbackRate.value = 0.85 + Math.random() * 0.3;
+      
+      // 볼륨 조절을 위한 GainNode
+      const gainNode = audioContext.createGain();
+      gainNode.gain.value = 0.8; // 기본 볼륨 80%
+
+      source.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      source.start(0);
+    }
+  } catch (error) {
+    console.error("Audio playback error", error);
   }
-  const ctx = (window as any).fartAudioCtx as AudioContext;
-
-  if (ctx.state === 'suspended') {
-    ctx.resume();
-  }
-
-  const t = ctx.currentTime;
-  
-  // 1. 기본 톤 (Sawtooth 파형으로 "뿌" 소리 구현)
-  const osc = ctx.createOscillator();
-  const oscGain = ctx.createGain();
-  
-  osc.type = 'sawtooth';
-  
-  // 랜덤성 부여: 높낮이, 길이, 떨어지는 정도
-  const duration = 0.1 + Math.random() * 0.4; 
-  const startFreq = 120 + Math.random() * 150; // 시작 음 높이
-  const endFreq = 40 + Math.random() * 40;    // 끝 음 높이
-  
-  osc.frequency.setValueAtTime(startFreq, t);
-  osc.frequency.exponentialRampToValueAtTime(endFreq, t + duration);
-  
-  oscGain.gain.setValueAtTime(0.3, t);
-  oscGain.gain.exponentialRampToValueAtTime(0.01, t + duration);
-  
-  osc.connect(oscGain);
-  oscGain.connect(ctx.destination);
-  osc.start(t);
-  osc.stop(t + duration);
-
-  // 2. 질감 (Noise 파형으로 "푸쉬쉬" 소리 구현)
-  const bufferSize = ctx.sampleRate * duration;
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  
-  for (let i = 0; i < bufferSize; i++) {
-    // White Noise
-    data[i] = (Math.random() * 2 - 1);
-  }
-  
-  const noise = ctx.createBufferSource();
-  noise.buffer = buffer;
-  
-  const noiseFilter = ctx.createBiquadFilter();
-  noiseFilter.type = 'lowpass';
-  noiseFilter.frequency.value = 300 + Math.random() * 200; // 먹먹하게 만듦
-  
-  const noiseGain = ctx.createGain();
-  noiseGain.gain.setValueAtTime(0.2, t);
-  noiseGain.gain.exponentialRampToValueAtTime(0.01, t + duration);
-  
-  noise.connect(noiseFilter);
-  noiseFilter.connect(noiseGain);
-  noiseGain.connect(ctx.destination);
-  
-  noise.start(t);
 };
